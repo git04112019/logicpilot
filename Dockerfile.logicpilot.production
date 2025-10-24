@@ -246,10 +246,16 @@ import sys
 from .core import run_workflow
 
 def main():
-    if len(sys.argv) < 2:
-        print("Usage: llms-os <workflow.yaml>")
-        print("\nAvailable in /app/workflows/demo.yaml")
-        return 1
+    if len(sys.argv) < 2 or sys.argv[1] in ['--help', '-h', 'help']:
+        print("LogicPilot - AI Workflow Automation")
+        print("\nUsage: logicpilot <workflow.yaml>")
+        print("\nExamples:")
+        print("  logicpilot /app/workflows/demo.yaml")
+        print("  logicpilot /app/workflows/advanced.yaml")
+        print("\nAvailable workflows:")
+        print("  - /app/workflows/demo.yaml - Basic demo workflow")
+        print("  - /app/workflows/advanced.yaml - Advanced AI workflow")
+        return 0
     
     try:
         run_workflow(sys.argv[1])
