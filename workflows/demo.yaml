@@ -1,0 +1,21 @@
+metadata:
+  title: "Production Demo"
+  version: "1.0.0"
+
+tasks:
+  - action: print_message
+    message: "🚀 LogicPilot Production v2.0"
+    style: success
+  
+  - action: http_request
+    url: "http://logicpilot-mock-api:8000/health"
+    method: GET
+    save_as: health_check
+  
+  - action: print_message
+    message: "Health: {{ health_check.status_code }}"
+    style: info
+  
+  - action: print_message
+    message: "✅ System operational"
+    style: success

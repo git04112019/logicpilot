@@ -22,6 +22,9 @@ setup: ## Initial setup - create required directories
 	@echo "✅ Directories created"
 	@cp .env.example .env 2>/dev/null || echo "# Environment variables\nOPENROUTER_API_KEY=your-key-here\nGRAFANA_PASSWORD=admin" > .env
 	@echo "✅ Environment file ready"
+	@echo "Copying sample workflows from image..."
+	@docker run --rm -v $(PWD)/workflows:/tmp/out logicpilot:production-v2.0 /bin/sh -c "cp /app/workflows/*.yaml /tmp/out/ 2>/dev/null || true" || true
+	@echo "✅ Setup complete"
 
 build: ## Build production Docker images
 	@echo "Building production images..."
@@ -75,8 +78,19 @@ health: ## Check service health
 	@echo ""
 	@curl -sf http://localhost:8000/health > /dev/null && echo "✅ Mock API: healthy" || echo "❌ Mock API: unhealthy"
 
-run-workflow: ## Run a workflow (Usage: make run-workflow WORKFLOW=workflows/demo.yaml)
-	@docker-compose -f $(COMPOSE_FILE) run --rm logicpilot $(WORKFLOW)
+run-workflow: ## Run a workflow (Usage: make run-workflow WORKFLOW=demo.yaml)
+	@docker-compose -f $(COMPOSE_FILE) run --rm logicpilot /app/workflows/$(WORKFLOW)
+
+list-workflows: ## List available workflows
+	@docker-compose -f $(COMPOSE_FILE) run --rm logicpilot /bin/sh -c "ls -lh /app/workflows/"
+
+test-demo: ## Run the demo workflow (quick test)
+	@echo "Running demo workflow..."
+	@docker-compose -f $(COMPOSE_FILE) run --rm logicpilot /app/workflows/demo.yaml
+
+test-advanced: ## Run the advanced workflow
+	@echo "Running advanced workflow..."
+	@docker-compose -f $(COMPOSE_FILE) run --rm logicpilot /app/workflows/advanced.yaml
 
 shell: ## Get shell access to LogicPilot container
 	@docker-compose -f $(COMPOSE_FILE) run --rm logicpilot /bin/sh

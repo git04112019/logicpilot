@@ -13,9 +13,11 @@ services:
       - OPENROUTER_API_URL=${OPENROUTER_API_URL:-http://logicpilot-mock-api:8000/api/v1}
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-sk-simulated-key}
     volumes:
+      # Mount local directories (comment out to use embedded workflows)
       - ./workflows:/app/workflows:ro
       - ./programs:/app/programs:ro
-      - ./plugins:/app/plugins:ro
+      # - ./plugins:/app/plugins:ro
+      # Always mount these for persistence:
       - ./logs:/app/logs
       - ./data:/app/data
     networks:

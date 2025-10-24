@@ -1,0 +1,27 @@
+metadata:
+  title: "Advanced AI Workflow"
+  version: "1.0.0"
+
+tasks:
+  - action: print_message
+    message: "Starting advanced workflow..."
+    style: info
+  
+  - action: chat_completion
+    model: "gpt-3.5-turbo"
+    messages:
+      - role: user
+        content: "Write a haiku about Docker containers"
+    save_as: poem
+  
+  - action: print_message
+    message: "{{ poem.content }}"
+    style: success
+  
+  - action: file_write
+    path: "/app/data/output.txt"
+    content: "Generated: {{ poem.content }}"
+  
+  - action: print_message
+    message: "✅ Workflow complete"
+    style: success
