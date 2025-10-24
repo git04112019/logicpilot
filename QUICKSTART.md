@@ -60,8 +60,14 @@ make help
 # Quick deployment
 make deploy
 
+# Run demo workflow (quickest test!)
+make test-demo
+
+# Run advanced workflow
+make test-advanced
+
 # Run a specific workflow
-make run-workflow WORKFLOW=/app/workflows/demo.yaml
+make run-workflow WORKFLOW=demo.yaml
 
 # View logs
 make logs
@@ -84,6 +90,18 @@ make build
 
 # Start services
 make run
+
+# Run demo workflow (easiest way!)
+make test-demo
+
+# Run advanced workflow
+make test-advanced
+
+# Run custom workflow
+make run-workflow WORKFLOW=demo.yaml
+
+# List available workflows
+make list-workflows
 
 # View logs in real-time
 make logs
@@ -123,13 +141,11 @@ tasks:
 2. Run it:
 
 ```bash
-# Using make
-make run-workflow WORKFLOW=/app/workflows/hello.yaml
+# Using make (easiest!)
+make run-workflow WORKFLOW=hello.yaml
 
 # Using docker-compose
-docker-compose -f docker-compose.production.yml run --rm \
-  -v $(pwd)/workflows:/app/workflows:ro \
-  logicpilot /app/workflows/hello.yaml
+docker-compose -f docker-compose.production.yml run --rm logicpilot /app/workflows/hello.yaml
 
 # Using docker directly
 docker run --rm \
