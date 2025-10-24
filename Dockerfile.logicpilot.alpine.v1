@@ -1,0 +1,154 @@
+ # -----------------------------------------------------------------------------
+# STAGE 1: Base (Python + Alpine)
+# -----------------------------------------------------------------------------
+FROM python:3.11-alpine AS base
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+RUN addgroup --system app && adduser --system --ingroup app appuser
+WORKDIR /app
+
+# -----------------------------------------------------------------------------
+# STAGE 2: Builder
+# -----------------------------------------------------------------------------
+FROM base AS builder
+
+# Cài đặt các dependency hệ thống cần thiết cho các gói Python
+RUN apk add --no-cache \
+    build-base \
+    libffi-dev \
+    openssl-dev \
+    yaml-dev \
+    rust \
+    cargo
+
+# Cài dependencies: web server + AI + logic engine
+RUN pip install --no-cache-dir \
+    fastapi uvicorn jinja2 pyyaml requests aiofiles openai
+
+# Nhúng logic engine
+RUN cat <<EOF > /app/logic_engine.py
+import os, yaml, time, importlib, subprocess, base64, tempfile, datetime
+from string import Template
+from jinja2 import Template as JinjaTemplate
+import requests
+
+CONTEXT = {}
+ACTION_REGISTRY = {}
+
+def register(name):
+    def wrapper(func):
+        ACTION_REGISTRY[name] = func
+        return func
+    return wrapper
+
+def get_action(name):
+    return ACTION_REGISTRY.get(name)
+
+@register("print_message")
+def print_message_action(task):
+    msg = render(task.get("message") or CONTEXT.get("message") or CONTEXT.get("item") or "(no message)")
+    print("[PRINT]", msg)
+
+def load_program(name):
+    path = f"./programs/{name}.logicmap"
+    if not os.path.exists(path):
+        raise FileNotFoundError(f"❌ Program not found: {name}")
+    with open(path) as f:
+        return yaml.safe_load(f)
+
+def render(s):
+    if isinstance(s, str):
+        return JinjaTemplate(s).render(env=os.environ, datetime=datetime, **CONTEXT)
+    return s
+
+def run_step(step):
+    if isinstance(step, dict):
+        if "action" in step:
+            return handle_action(step)
+        elif "set" in step:
+            return handle_set(step["set"])
+    elif isinstance(step, str):
+        return run_program(step, CONTEXT)
+
+def handle_set(cfg):
+    for k, v in cfg.items():
+        CONTEXT[k] = render(v)
+
+def handle_action(task):
+    name = task["action"]
+    fn = get_action(name)
+    if fn:
+        try:
+            fn(task)
+        except Exception as e:
+            print(f"❌ Error in action '{name}': {e}")
+            raise
+    else:
+        print(f"⚠️ Unsupported action: {name}")
+
+def run_program(name, args):
+    prog = load_program(name)
+    print(f"\n▶️ RUN: {prog.get('program')}")
+    CONTEXT.update(args)
+    for step in prog.get("process", []): run_step(step)
+    for k, v in (prog.get("output") or {}).items():
+        CONTEXT[k] = render(v)
+    return CONTEXT
+EOF
+
+# Nhúng MCP server (FastAPI wrapper)
+RUN cat <<EOF > /app/mcp_server.py
+from fastapi import FastAPI, Request
+from pydantic import BaseModel
+import logic_engine
+import os
+import openai
+
+app = FastAPI()
+
+class PromptRequest(BaseModel):
+    prompt: str
+    model: str = "gpt-3.5-turbo"
+
+@app.post("/prompt")
+async def handle_prompt(req: PromptRequest):
+    openai.api_key = os.getenv("OPENAI_API_KEY")
+    res = openai.ChatCompletion.create(
+        model=req.model,
+        messages=[{"role": "user", "content": req.prompt}]
+    )
+    return {"response": res.choices[0].message["content"]}
+
+@app.post("/run/{program_name}")
+async def run_logicmap(program_name: str, request: Request):
+    args = await request.json()
+    result = logic_engine.run_program(program_name, args)
+    return {"context": result}
+EOF
+
+# Nhúng chương trình logicmap mẫu
+RUN mkdir /app/programs
+RUN cat <<EOF > /app/programs/main.logicmap
+program: LogicPilot Alpine Demo
+
+process:
+  - set: { message: "🧠 Hello from Alpine-powered LogicPilot" }
+  - action: print_message
+EOF
+
+# -----------------------------------------------------------------------------
+# STAGE 3: Final
+# -----------------------------------------------------------------------------
+FROM base AS final
+
+COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+COPY --from=builder /app /app
+
+RUN chown -R appuser:app /app
+USER appuser
+
+ENTRYPOINT ["python", "-m", "uvicorn", "mcp_server:app", "--host", "0.0.0.0", "--port", "8080"]
+
+LABEL maintainer="you@yourdomain.com"
+LABEL description="LogicPilot Alpine: Ultra-light AI orchestration engine with web API"
