@@ -82,7 +82,7 @@ run-workflow: ## Run a workflow (Usage: make run-workflow WORKFLOW=demo.yaml)
 	@docker-compose -f $(COMPOSE_FILE) run --rm logicpilot /app/workflows/$(WORKFLOW)
 
 list-workflows: ## List available workflows
-	@docker-compose -f $(COMPOSE_FILE) run --rm logicpilot /bin/sh -c "ls -lh /app/workflows/"
+	@docker-compose -f $(COMPOSE_FILE) run --rm --entrypoint /bin/sh logicpilot -c "ls -lh /app/workflows/"
 
 test-demo: ## Run the demo workflow (quick test)
 	@echo "Running demo workflow..."
@@ -93,7 +93,7 @@ test-advanced: ## Run the advanced workflow
 	@docker-compose -f $(COMPOSE_FILE) run --rm logicpilot /app/workflows/advanced.yaml
 
 shell: ## Get shell access to LogicPilot container
-	@docker-compose -f $(COMPOSE_FILE) run --rm logicpilot /bin/sh
+	@docker-compose -f $(COMPOSE_FILE) run --rm --entrypoint /bin/sh logicpilot
 
 clean: ## Remove containers, networks, volumes
 	@echo "Cleaning up..."
