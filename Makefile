@@ -134,8 +134,8 @@ scan: ## Scan images for vulnerabilities
 backup: ## Backup volumes
 	@echo "Backing up volumes..."
 	@mkdir -p backups
-	@docker run --rm -v llms-prometheus-data:/data -v $(PWD)/backups:/backup alpine tar czf /backup/prometheus-data-$$(date +%Y%m%d-%H%M%S).tar.gz -C /data .
-	@docker run --rm -v llms-grafana-data:/data -v $(PWD)/backups:/backup alpine tar czf /backup/grafana-data-$$(date +%Y%m%d-%H%M%S).tar.gz -C /data .
+	@docker run --rm -v logicpilot-prometheus-data:/data -v $(PWD)/backups:/backup alpine tar czf /backup/prometheus-data-$$(date +%Y%m%d-%H%M%S).tar.gz -C /data .
+	@docker run --rm -v logicpilot-grafana-data:/data -v $(PWD)/backups:/backup alpine tar czf /backup/grafana-data-$$(date +%Y%m%d-%H%M%S).tar.gz -C /data .
 	@echo "✅ Backup complete"
 
 info: ## Show system information
@@ -148,4 +148,4 @@ info: ## Show system information
 	@docker images | grep -E "logicpilot|mock-api|REPOSITORY"
 	@echo ""
 	@echo "Running containers:"
-	@docker ps --filter "name=llms" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+	@docker ps --filter "name=logicpilot" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
