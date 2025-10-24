@@ -1,0 +1,130 @@
+version: '3.8'
+
+services:
+  # Main LLMs OS Application
+  llms-os:
+    build:
+      context: .
+      dockerfile: Dockerfile.llms-os.production
+    image: llms-os:production-v2.0
+    container_name: llms-os-production
+    restart: unless-stopped
+    environment:
+      - ENVIRONMENT=production
+      - LOG_LEVEL=INFO
+      - OPENROUTER_API_URL=${OPENROUTER_API_URL:-http://llms-mock-api:8000/api/v1}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-sk-simulated-key}
+    volumes:
+      - ./workflows:/app/workflows:ro
+      - ./programs:/app/programs:ro
+      - ./plugins:/app/plugins:ro
+      - ./logs:/app/logs
+      - ./data:/app/data
+    networks:
+      - llms-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import LLMs_OS; print('healthy')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    depends_on:
+      mock-api:
+        condition: service_healthy
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Mock API for testing
+  llms-mock-api:
+    build:
+      context: ./mock-api
+      dockerfile: Dockerfile
+    image: llms-os-mock-api:latest
+    container_name: llms-mock-api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - FLASK_ENV=production
+      - LOG_LEVEL=INFO
+    networks:
+      - llms-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Prometheus for monitoring (optional)
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    container_name: llms-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.enable-lifecycle'
+    networks:
+      - llms-network
+    profiles:
+      - monitoring
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Grafana for visualization (optional)
+  grafana:
+    image: grafana/grafana:10.2.3
+    container_name: llms-grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana-dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana-datasources:/etc/grafana/provisioning/datasources:ro
+    networks:
+      - llms-network
+    depends_on:
+      - prometheus
+    profiles:
+      - monitoring
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  llms-network:
+    driver: bridge
+    name: llms-network
+
+volumes:
+  prometheus-data:
+    name: llms-prometheus-data
+  grafana-data:
+    name: llms-grafana-data

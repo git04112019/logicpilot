@@ -1,0 +1,390 @@
+# ==============================================================================
+# SIMPLIFIED PRODUCTION DOCKERFILE - ALL-IN-ONE BUILD
+# Combines LogicPilot + LLMs OS in a single self-contained image
+# ==============================================================================
+
+FROM python:3.12-alpine3.19 AS base
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
+
+RUN addgroup --system --gid 1000 app && \
+    adduser --system --uid 1000 --ingroup app appuser
+
+WORKDIR /app
+
+# -----------------------------------------------------------------------------
+# STAGE 2: Builder with all dependencies
+# -----------------------------------------------------------------------------
+FROM base AS builder
+
+# Install ALL build dependencies
+RUN apk add --no-cache \
+    gcc musl-dev libffi-dev openssl-dev python3-dev \
+    cargo rust yaml-dev build-base git
+
+# Install Python packages
+RUN pip install --no-cache-dir \
+    fastapi==0.109.0 \
+    uvicorn[standard]==0.27.0 \
+    pyyaml==6.0.1 \
+    jinja2==3.1.2 \
+    requests==2.31.0 \
+    aiohttp==3.9.1 \
+    aiofiles==23.2.1 \
+    openai==0.28.0 \
+    anthropic==0.8.1 \
+    prometheus-client==0.19.0 \
+    python-dotenv==1.0.0 \
+    colorama==0.4.6 \
+    rich==13.7.0 \
+    tenacity==8.2.3 \
+    pydantic==2.5.3 \
+    jsonschema==4.20.0
+
+WORKDIR /app
+
+# Create directory structure
+RUN mkdir -p src/LLMs_OS/actions workflows programs tests
+
+# Create LLMs_OS package structure
+RUN cat > src/LLMs_OS/__init__.py <<'EOF'
+"""LLMs OS - AI-powered workflow automation system"""
+__version__ = "2.0.0"
+__all__ = ["WorkflowEngine", "register_action", "run_workflow"]
+
+from .core import WorkflowEngine, run_workflow
+from .registry import register_action
+
+# Import actions to register them
+from . import actions
+EOF
+
+# Create core workflow engine
+RUN cat > src/LLMs_OS/core.py <<'EOF'
+import yaml, os, logging
+from jinja2 import Template
+from .registry import get_action
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+class WorkflowEngine:
+    def __init__(self):
+        self.context = {}
+    
+    def render(self, value):
+        if isinstance(value, str):
+            return Template(value).render(**self.context, env=os.environ)
+        return value
+    
+    def run_task(self, task):
+        action_name = task.get('action')
+        if not action_name:
+            return
+        
+        action_func = get_action(action_name)
+        if action_func:
+            try:
+                result = action_func(task, self.context)
+                if task.get('save_as'):
+                    self.context[task['save_as']] = result
+            except Exception as e:
+                logger.error(f"Error in action '{action_name}': {e}")
+                raise
+        else:
+            logger.warning(f"Unknown action: {action_name}")
+
+def run_workflow(workflow_file):
+    with open(workflow_file) as f:
+        workflow = yaml.safe_load(f)
+    
+    engine = WorkflowEngine()
+    metadata = workflow.get('metadata', {})
+    logger.info(f"Running workflow: {metadata.get('title', 'Unnamed')}")
+    
+    for task in workflow.get('tasks', []):
+        engine.run_task(task)
+    
+    logger.info("Workflow completed successfully")
+    return engine.context
+EOF
+
+# Create action registry
+RUN cat > src/LLMs_OS/registry.py <<'EOF'
+_ACTION_REGISTRY = {}
+
+def register_action(name):
+    def decorator(func):
+        _ACTION_REGISTRY[name] = func
+        return func
+    return decorator
+
+def get_action(name):
+    return _ACTION_REGISTRY.get(name)
+
+def list_actions():
+    return list(_ACTION_REGISTRY.keys())
+EOF
+
+# Create built-in actions
+RUN cat > src/LLMs_OS/actions/__init__.py <<'EOF'
+from .print_action import *
+from .chat_action import *
+from .http_action import *
+from .file_actions import *
+EOF
+
+RUN cat > src/LLMs_OS/actions/print_action.py <<'EOF'
+from ..registry import register_action
+from rich.console import Console
+from jinja2 import Template
+
+console = Console()
+
+@register_action('print_message')
+def print_message(task, context):
+    msg = Template(task.get('message', '')).render(**context)
+    style = task.get('style', 'info')
+    
+    styles = {
+        'success': 'bold green',
+        'error': 'bold red',
+        'warning': 'bold yellow',
+        'info': 'bold blue'
+    }
+    
+    console.print(msg, style=styles.get(style, 'white'))
+    return msg
+EOF
+
+RUN cat > src/LLMs_OS/actions/chat_action.py <<'EOF'
+from ..registry import register_action
+import os, requests, logging
+
+logger = logging.getLogger(__name__)
+
+@register_action('chat_completion')
+def chat_completion(task, context):
+    api_url = os.getenv('OPENROUTER_API_URL', 'http://localhost:8000/api/v1')
+    api_key = os.getenv('OPENROUTER_API_KEY', 'sk-test')
+    
+    model = task.get('model', 'gpt-3.5-turbo')
+    messages = task.get('messages', [])
+    
+    try:
+        response = requests.post(
+            f"{api_url}/chat/completions",
+            headers={'Authorization': f'Bearer {api_key}'},
+            json={'model': model, 'messages': messages},
+            timeout=30
+        )
+        response.raise_for_status()
+        result = response.json()
+        return result['choices'][0]['message']
+    except Exception as e:
+        logger.error(f"Chat completion error: {e}")
+        return {'role': 'assistant', 'content': f'Error: {e}'}
+EOF
+
+RUN cat > src/LLMs_OS/actions/http_action.py <<'EOF'
+from ..registry import register_action
+import requests, logging
+
+logger = logging.getLogger(__name__)
+
+@register_action('http_request')
+def http_request(task, context):
+    method = task.get('method', 'GET').upper()
+    url = task.get('url')
+    
+    try:
+        response = requests.request(
+            method, url,
+            headers=task.get('headers', {}),
+            json=task.get('json'),
+            data=task.get('data'),
+            timeout=task.get('timeout', 30)
+        )
+        return {
+            'status_code': response.status_code,
+            'headers': dict(response.headers),
+            'body': response.text,
+            'json': response.json() if response.headers.get('content-type', '').startswith('application/json') else None
+        }
+    except Exception as e:
+        logger.error(f"HTTP request error: {e}")
+        return {'error': str(e)}
+EOF
+
+RUN cat > src/LLMs_OS/actions/file_actions.py <<'EOF'
+from ..registry import register_action
+import os
+
+@register_action('file_read')
+def file_read(task, context):
+    path = task.get('path')
+    with open(path, 'r') as f:
+        return f.read()
+
+@register_action('file_write')
+def file_write(task, context):
+    path = task.get('path')
+    content = task.get('content', '')
+    mode = task.get('mode', 'w')
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, mode) as f:
+        f.write(content)
+    return {'path': path, 'size': len(content)}
+EOF
+
+# Create CLI
+RUN cat > src/LLMs_OS/cli.py <<'EOF'
+#!/usr/bin/env python3
+import sys
+from .core import run_workflow
+
+def main():
+    if len(sys.argv) < 2:
+        print("Usage: llms-os <workflow.yaml>")
+        print("\nAvailable in /app/workflows/demo.yaml")
+        return 1
+    
+    try:
+        run_workflow(sys.argv[1])
+        return 0
+    except Exception as e:
+        print(f"Error: {e}")
+        return 1
+
+if __name__ == '__main__':
+    sys.exit(main())
+EOF
+
+# Create pyproject.toml
+RUN cat > src/pyproject.toml <<'EOF'
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "LLMs_OS"
+version = "2.0.0"
+description = "AI-powered workflow automation"
+
+[project.scripts]
+llms-os = "LLMs_OS.cli:main"
+EOF
+
+# Install the package
+RUN pip install -e /app/src
+
+# Create demo workflow
+RUN cat > workflows/demo.yaml <<'EOF'
+metadata:
+  title: "Production Demo"
+  version: "1.0.0"
+
+tasks:
+  - action: print_message
+    message: "🚀 LLMs OS Production v2.0"
+    style: success
+  
+  - action: http_request
+    url: "http://llms-mock-api:8000/health"
+    method: GET
+    save_as: health_check
+  
+  - action: print_message
+    message: "Health: {{ health_check.status_code }}"
+    style: info
+  
+  - action: print_message
+    message: "✅ System operational"
+    style: success
+EOF
+
+# Create advanced workflow
+RUN cat > workflows/advanced.yaml <<'EOF'
+metadata:
+  title: "Advanced AI Workflow"
+  version: "1.0.0"
+
+tasks:
+  - action: print_message
+    message: "Starting advanced workflow..."
+    style: info
+  
+  - action: chat_completion
+    model: "gpt-3.5-turbo"
+    messages:
+      - role: user
+        content: "Write a haiku about Docker containers"
+    save_as: poem
+  
+  - action: print_message
+    message: "{{ poem.content }}"
+    style: success
+  
+  - action: file_write
+    path: "/app/data/output.txt"
+    content: "Generated: {{ poem.content }}"
+  
+  - action: print_message
+    message: "✅ Workflow complete"
+    style: success
+EOF
+
+# Create logicmap program
+RUN cat > programs/system.logicmap <<'EOF'
+program: System Status Check
+
+process:
+  - set:
+      timestamp: "{{ datetime.datetime.now().isoformat() }}"
+  - action: print_message
+    message: "System check at {{ timestamp }}"
+EOF
+
+# -----------------------------------------------------------------------------
+# STAGE 3: Final production image
+# -----------------------------------------------------------------------------
+FROM base AS final
+
+LABEL maintainer="production@llms-os.com" \
+      version="2.0.0" \
+      description="Production LLMs OS with LogicPilot integration"
+
+# Install runtime dependencies only
+RUN apk add --no-cache libffi openssl yaml curl ca-certificates tzdata
+
+WORKDIR /app
+
+# Copy Python packages
+COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
+COPY --from=builder /usr/local/bin /usr/local/bin
+
+# Copy application
+COPY --from=builder --chown=appuser:app /app /app
+
+# Create required directories
+RUN mkdir -p logs data && \
+    chown -R appuser:app /app && \
+    chmod -R 755 /app && \
+    chmod -R 777 logs data
+
+USER appuser
+
+VOLUME ["/app/workflows", "/app/programs", "/app/logs", "/app/data"]
+
+EXPOSE 8080 9090
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD python -c "import LLMs_OS; print('healthy')" || exit 1
+
+ENTRYPOINT ["llms-os"]
+CMD ["/app/workflows/demo.yaml"]
+
+ENV APP_VERSION="2.0.0" \
+    ENVIRONMENT="production"

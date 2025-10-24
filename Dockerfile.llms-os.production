@@ -1,0 +1,174 @@
+# ==============================================================================
+# PRODUCTION-READY DOCKERFILE FOR LLMS-OS
+# Based on LogicPilot Alpine with enhanced workflow automation
+# ==============================================================================
+
+# -----------------------------------------------------------------------------
+# STAGE 1: Base (Alpine Linux + Python 3.12)
+# -----------------------------------------------------------------------------
+FROM python:3.12-alpine3.19 AS base
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONHASHSEED=random \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# Create non-root user early
+RUN addgroup --system --gid 1000 app && \
+    adduser --system --uid 1000 --ingroup app --shell /sbin/nologin appuser
+
+WORKDIR /app
+
+# -----------------------------------------------------------------------------
+# STAGE 2: Dependencies Builder
+# -----------------------------------------------------------------------------
+FROM base AS builder
+
+# Install build dependencies
+RUN apk add --no-cache \
+    gcc \
+    musl-dev \
+    libffi-dev \
+    openssl-dev \
+    python3-dev \
+    cargo \
+    rust \
+    yaml-dev \
+    build-base
+
+WORKDIR /build
+
+# Copy only requirements first for better layer caching
+COPY requirements.txt .
+
+# Build wheels for all dependencies
+RUN pip wheel --no-cache-dir --no-deps --wheel-dir /build/wheels -r requirements.txt
+
+# -----------------------------------------------------------------------------
+# STAGE 3: Application Builder
+# -----------------------------------------------------------------------------
+FROM builder AS app-builder
+
+WORKDIR /app
+
+# Install the wheels we built
+COPY --from=builder /build/wheels /wheels
+RUN pip install --no-cache-dir /wheels/*
+
+# Create application structure
+RUN mkdir -p /app/src/LLMs_OS/actions \
+             /app/workflows \
+             /app/programs \
+             /app/plugins \
+             /app/logs \
+             /app/data
+
+# Copy application source files
+# These will be provided when building the image
+COPY src/LLMs_OS/__init__.py /app/src/LLMs_OS/
+COPY src/LLMs_OS/core.py /app/src/LLMs_OS/
+COPY src/LLMs_OS/async_core.py /app/src/LLMs_OS/
+COPY src/LLMs_OS/cli.py /app/src/LLMs_OS/
+COPY src/LLMs_OS/registry.py /app/src/LLMs_OS/
+COPY src/LLMs_OS/plugins.py /app/src/LLMs_OS/
+COPY src/LLMs_OS/monitoring.py /app/src/LLMs_OS/
+COPY src/LLMs_OS/validators.py /app/src/LLMs_OS/
+COPY src/LLMs_OS/exceptions.py /app/src/LLMs_OS/
+COPY src/LLMs_OS/actions/ /app/src/LLMs_OS/actions/
+COPY src/pyproject.toml /app/src/
+
+# Install the application as a package
+RUN pip install --no-cache-dir -e /app/src
+
+# Create sample workflow
+RUN cat > /app/workflows/demo.yaml <<'EOF'
+metadata:
+  title: "LLMs OS Demo Workflow"
+  version: "1.0.0"
+  description: "Production demo workflow"
+
+tasks:
+  - action: print_message
+    message: "🚀 LLMs OS Production System Started"
+    style: success
+  
+  - action: print_message
+    message: "System: {{ env.HOSTNAME | default('localhost') }}"
+    style: info
+  
+  - action: print_message
+    message: "✅ All systems operational"
+    style: success
+EOF
+
+# Create sample logicmap program
+RUN cat > /app/programs/system_info.logicmap <<'EOF'
+program: System Information
+
+process:
+  - set: 
+      timestamp: "{{ datetime.datetime.now().isoformat() }}"
+      system: "LLMs OS Production v2.0"
+  - action: print_message
+    message: "System: {{ system }} | Time: {{ timestamp }}"
+EOF
+
+# -----------------------------------------------------------------------------
+# STAGE 4: Final Production Image
+# -----------------------------------------------------------------------------
+FROM base AS final
+
+LABEL maintainer="llms-os@production.com" \
+      version="2.0.0" \
+      description="Production-ready LLMs OS with workflow automation" \
+      org.opencontainers.image.source="https://github.com/test01082023/llms-os" \
+      org.opencontainers.image.title="LLMs OS Production" \
+      org.opencontainers.image.description="AI-powered workflow automation system" \
+      org.opencontainers.image.vendor="LLMs OS Team"
+
+# Install only runtime dependencies
+RUN apk add --no-cache \
+    libffi \
+    openssl \
+    yaml \
+    curl \
+    ca-certificates \
+    tzdata && \
+    rm -rf /var/cache/apk/*
+
+WORKDIR /app
+
+# Copy installed packages from builder
+COPY --from=app-builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
+COPY --from=app-builder /usr/local/bin /usr/local/bin
+
+# Copy application files
+COPY --from=app-builder --chown=appuser:app /app /app
+
+# Create volume mount points
+VOLUME ["/app/workflows", "/app/programs", "/app/plugins", "/app/logs", "/app/data"]
+
+# Set proper permissions
+RUN chown -R appuser:app /app && \
+    chmod -R 755 /app && \
+    chmod -R 777 /app/logs /app/data
+
+# Switch to non-root user
+USER appuser
+
+# Expose ports for API and monitoring
+EXPOSE 8080 9090
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD python -c "import LLMs_OS; print('healthy')" || exit 1
+
+# Set entrypoint
+ENTRYPOINT ["llms-os"]
+CMD ["--help"]
+
+# Metadata
+ENV APP_VERSION="2.0.0" \
+    APP_NAME="llms-os" \
+    ENVIRONMENT="production"
