@@ -1,18 +1,18 @@
 version: '3.8'
 
 services:
-  # Main LLMs OS Application
-  llms-os:
+  # Main LogicPilot Application
+  logicpilot:
     build:
       context: .
-      dockerfile: Dockerfile.llms-os.production
-    image: llms-os:production-v2.0
-    container_name: llms-os-production
+      dockerfile: Dockerfile.logicpilot.production
+    image: logicpilot:production-v2.0
+    container_name: logicpilot-production
     restart: unless-stopped
     environment:
       - ENVIRONMENT=production
       - LOG_LEVEL=INFO
-      - OPENROUTER_API_URL=${OPENROUTER_API_URL:-http://llms-mock-api:8000/api/v1}
+      - OPENROUTER_API_URL=${OPENROUTER_API_URL:-http://logicpilot-mock-api:8000/api/v1}
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-sk-simulated-key}
     volumes:
       - ./workflows:/app/workflows:ro
@@ -38,12 +38,12 @@ services:
         max-file: "3"
 
   # Mock API for testing
-  llms-mock-api:
+  logicpilot-mock-api:
     build:
       context: ./mock-api
       dockerfile: Dockerfile
-    image: llms-os-mock-api:latest
-    container_name: llms-mock-api
+    image: logicpilot-mock-api:latest
+    container_name: logicpilot-mock-api
     restart: unless-stopped
     ports:
       - "8000:8000"

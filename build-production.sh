@@ -1,11 +1,11 @@
 #!/bin/bash
 # ==============================================================================
-# Build and test script for LLMs OS Production
+# Build and test script for LogicPilot Production
 # ==============================================================================
 
 set -e
 
-echo "🚀 LLMs OS Production Build Script"
+echo "🚀 LogicPilot Production Build Script"
 echo "===================================="
 
 # Colors
@@ -16,10 +16,10 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Configuration
-IMAGE_NAME="llms-os"
+IMAGE_NAME="logicpilot"
 IMAGE_TAG="production-v2.0"
-DOCKERFILE="Dockerfile.llms-os.alpine"
-CONTAINER_NAME="llms-os-test"
+DOCKERFILE="Dockerfile.logicpilot.production"
+CONTAINER_NAME="logicpilot-test"
 
 # Functions
 log_info() {

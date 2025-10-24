@@ -46,10 +46,10 @@ RUN pip install --no-cache-dir \
 WORKDIR /app
 
 # Create directory structure
-RUN mkdir -p src/LLMs_OS/actions workflows programs tests
+RUN mkdir -p src/LogicPilot/actions workflows programs tests
 
-# Create LLMs_OS package structure
-RUN cat > src/LLMs_OS/__init__.py <<'EOF'
+# Create LogicPilot package structure
+RUN cat > src/LogicPilot/__init__.py <<'EOF'
 """LLMs OS - AI-powered workflow automation system"""
 __version__ = "2.0.0"
 __all__ = ["WorkflowEngine", "register_action", "run_workflow"]
@@ -62,7 +62,7 @@ from . import actions
 EOF
 
 # Create core workflow engine
-RUN cat > src/LLMs_OS/core.py <<'EOF'
+RUN cat > src/LogicPilot/core.py <<'EOF'
 import yaml, os, logging
 from jinja2 import Template
 from .registry import get_action
@@ -112,7 +112,7 @@ def run_workflow(workflow_file):
 EOF
 
 # Create action registry
-RUN cat > src/LLMs_OS/registry.py <<'EOF'
+RUN cat > src/LogicPilot/registry.py <<'EOF'
 _ACTION_REGISTRY = {}
 
 def register_action(name):
@@ -129,14 +129,14 @@ def list_actions():
 EOF
 
 # Create built-in actions
-RUN cat > src/LLMs_OS/actions/__init__.py <<'EOF'
+RUN cat > src/LogicPilot/actions/__init__.py <<'EOF'
 from .print_action import *
 from .chat_action import *
 from .http_action import *
 from .file_actions import *
 EOF
 
-RUN cat > src/LLMs_OS/actions/print_action.py <<'EOF'
+RUN cat > src/LogicPilot/actions/print_action.py <<'EOF'
 from ..registry import register_action
 from rich.console import Console
 from jinja2 import Template
@@ -159,7 +159,7 @@ def print_message(task, context):
     return msg
 EOF
 
-RUN cat > src/LLMs_OS/actions/chat_action.py <<'EOF'
+RUN cat > src/LogicPilot/actions/chat_action.py <<'EOF'
 from ..registry import register_action
 import os, requests, logging
 
@@ -188,7 +188,7 @@ def chat_completion(task, context):
         return {'role': 'assistant', 'content': f'Error: {e}'}
 EOF
 
-RUN cat > src/LLMs_OS/actions/http_action.py <<'EOF'
+RUN cat > src/LogicPilot/actions/http_action.py <<'EOF'
 from ..registry import register_action
 import requests, logging
 
@@ -218,7 +218,7 @@ def http_request(task, context):
         return {'error': str(e)}
 EOF
 
-RUN cat > src/LLMs_OS/actions/file_actions.py <<'EOF'
+RUN cat > src/LogicPilot/actions/file_actions.py <<'EOF'
 from ..registry import register_action
 import os
 
@@ -240,7 +240,7 @@ def file_write(task, context):
 EOF
 
 # Create CLI
-RUN cat > src/LLMs_OS/cli.py <<'EOF'
+RUN cat > src/LogicPilot/cli.py <<'EOF'
 #!/usr/bin/env python3
 import sys
 from .core import run_workflow
@@ -269,12 +269,12 @@ requires = ["setuptools>=45", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "LLMs_OS"
+name = "LogicPilot"
 version = "2.0.0"
 description = "AI-powered workflow automation"
 
 [project.scripts]
-llms-os = "LLMs_OS.cli:main"
+llms-os = "LogicPilot.cli:main"
 EOF
 
 # Install the package
@@ -288,11 +288,11 @@ metadata:
 
 tasks:
   - action: print_message
-    message: "🚀 LLMs OS Production v2.0"
+    message: "🚀 LogicPilot Production v2.0"
     style: success
   
   - action: http_request
-    url: "http://llms-mock-api:8000/health"
+    url: "http://logicpilot-mock-api:8000/health"
     method: GET
     save_as: health_check
   
@@ -381,7 +381,7 @@ VOLUME ["/app/workflows", "/app/programs", "/app/logs", "/app/data"]
 EXPOSE 8080 9090
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import LLMs_OS; print('healthy')" || exit 1
+    CMD python -c "import LogicPilot; print('healthy')" || exit 1
 
 ENTRYPOINT ["llms-os"]
 CMD ["/app/workflows/demo.yaml"]

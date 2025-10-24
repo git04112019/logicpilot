@@ -1,17 +1,18 @@
 # ==============================================================================
-# Makefile for LLMs OS Production Build
+# Makefile for LogicPilot Production Build
 # ==============================================================================
 
 .PHONY: help build build-no-cache test run stop clean setup deploy health
 
 # Variables
-IMAGE_NAME := llms-os
+IMAGE_NAME := logicpilot
 IMAGE_TAG := production-v2.0
-MOCK_API_IMAGE := llms-os-mock-api
+MOCK_API_IMAGE := logicpilot-mock-api
 COMPOSE_FILE := docker-compose.production.yml
+DOCKERFILE := Dockerfile.logicpilot.production
 
 help: ## Show this help message
-	@echo "LLMs OS Production Build System"
+	@echo "LogicPilot Production Build System"
 	@echo "================================"
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
@@ -34,7 +35,7 @@ build-no-cache: ## Build images without cache
 
 test: ## Run tests
 	@echo "Running tests..."
-	docker-compose -f $(COMPOSE_FILE) run --rm llms-os pytest /app/tests/ -v || echo "⚠️  No tests found"
+	docker-compose -f $(COMPOSE_FILE) run --rm logicpilot pytest /app/tests/ -v || echo "⚠️  No tests found"
 	@echo "✅ Tests complete"
 
 run: ## Start all services
@@ -62,8 +63,8 @@ restart: stop run ## Restart all services
 logs: ## Show logs
 	docker-compose -f $(COMPOSE_FILE) logs -f
 
-logs-llms: ## Show LLMs OS logs
-	docker-compose -f $(COMPOSE_FILE) logs -f llms-os
+logs-llms: ## Show LogicPilot logs
+	docker-compose -f $(COMPOSE_FILE) logs -f logicpilot
 
 logs-api: ## Show Mock API logs
 	docker-compose -f $(COMPOSE_FILE) logs -f llms-mock-api
@@ -75,10 +76,10 @@ health: ## Check service health
 	@curl -sf http://localhost:8000/health > /dev/null && echo "✅ Mock API: healthy" || echo "❌ Mock API: unhealthy"
 
 run-workflow: ## Run a workflow (Usage: make run-workflow WORKFLOW=workflows/demo.yaml)
-	@docker-compose -f $(COMPOSE_FILE) run --rm llms-os $(WORKFLOW)
+	@docker-compose -f $(COMPOSE_FILE) run --rm logicpilot $(WORKFLOW)
 
-shell: ## Get shell access to LLMs OS container
-	@docker-compose -f $(COMPOSE_FILE) run --rm llms-os /bin/sh
+shell: ## Get shell access to LogicPilot container
+	@docker-compose -f $(COMPOSE_FILE) run --rm logicpilot /bin/sh
 
 clean: ## Remove containers, networks, volumes
 	@echo "Cleaning up..."
@@ -144,7 +145,7 @@ info: ## Show system information
 	@echo "Docker Compose version: $$(docker-compose --version)"
 	@echo ""
 	@echo "Images:"
-	@docker images | grep -E "llms-os|mock-api|REPOSITORY"
+	@docker images | grep -E "logicpilot|mock-api|REPOSITORY"
 	@echo ""
 	@echo "Running containers:"
 	@docker ps --filter "name=llms" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"

@@ -1,8 +1,8 @@
-# LLMs OS Production - Quick Start Guide
+# LogicPilot Production - Quick Start Guide
 
-## 🚀 Production-Ready LLMs OS with LogicPilot Integration
+## 🚀 Production-Ready LogicPilot with LogicPilot Integration
 
-This is a production-grade Docker build combining **LogicPilot** Alpine-based architecture with the powerful **LLMs OS** workflow automation system from https://github.com/test01082023/llms-os.
+This is a production-grade Docker build combining **LogicPilot** Alpine-based architecture with the powerful **LogicPilot** workflow automation system from https://github.com/test01082023/logicpilot.
 
 ## ✨ Features
 
@@ -23,7 +23,7 @@ This is a production-grade Docker build combining **LogicPilot** Alpine-based ar
 - `file_read` / `file_write` - File operations
 
 ### Components
-- **LLMs OS Engine**: Core workflow execution engine
+- **LogicPilot Engine**: Core workflow execution engine
 - **Mock API**: Flask-based OpenRouter API simulator
 - **Monitoring**: Optional Prometheus + Grafana stack
 - **CLI**: Command-line interface for workflow execution
@@ -40,7 +40,7 @@ chmod +x build-production.sh
 ./build-production.sh
 
 # Run demo workflow
-docker run --rm llms-os:production-v2.0 /app/workflows/demo.yaml
+docker run --rm logicpilot:production-v2.0 /app/workflows/demo.yaml
 ```
 
 ### Option 2: Full Stack with Docker Compose
@@ -82,10 +82,10 @@ make run-with-monitoring
 make run-workflow WORKFLOW=/app/workflows/demo.yaml
 
 # Using docker-compose
-docker-compose -f docker-compose.production.yml run --rm llms-os /app/workflows/demo.yaml
+docker-compose -f docker-compose.production.yml run --rm logicpilot /app/workflows/demo.yaml
 
 # Direct docker run
-docker run --rm llms-os:production-v2.0 /app/workflows/demo.yaml
+docker run --rm logicpilot:production-v2.0 /app/workflows/demo.yaml
 ```
 
 ### Create Custom Workflow
@@ -127,14 +127,14 @@ Run it:
 ```bash
 docker-compose -f docker-compose.production.yml run --rm \
   -v $(pwd)/workflows:/app/workflows:ro \
-  llms-os /app/workflows/my-workflow.yaml
+  logicpilot /app/workflows/my-workflow.yaml
 ```
 
 ## 🏗️ Architecture
 
 ```
 ┌─────────────────────────────────────────────┐
-│  Dockerfile.llms-os.alpine (150MB)          │
+│  Dockerfile.logicpilot.alpine (150MB)          │
 │  ┌───────────────────────────────────────┐  │
 │  │ Stage 1: Base (Alpine 3.19 + Python) │  │
 │  └───────────────────────────────────────┘  │
@@ -162,7 +162,7 @@ docker-compose -f docker-compose.production.yml run --rm \
 make shell
 
 # Using docker
-docker run --rm -it llms-os:production-v2.0 /bin/sh
+docker run --rm -it logicpilot:production-v2.0 /bin/sh
 ```
 
 ### View Logs
@@ -171,7 +171,7 @@ docker run --rm -it llms-os:production-v2.0 /bin/sh
 # All services
 make logs
 
-# Just LLMs OS
+# Just LogicPilot
 make logs-llms
 
 # Just Mock API
@@ -229,13 +229,13 @@ make test
 
 ```bash
 # Test help command
-docker run --rm llms-os:production-v2.0 --help
+docker run --rm logicpilot:production-v2.0 --help
 
 # Test health check
-docker run --rm llms-os:production-v2.0 python -c "import LLMs_OS; print('OK')"
+docker run --rm logicpilot:production-v2.0 python -c "import LLMs_OS; print('OK')"
 
 # Test demo workflow
-docker run --rm llms-os:production-v2.0 /app/workflows/demo.yaml
+docker run --rm logicpilot:production-v2.0 /app/workflows/demo.yaml
 ```
 
 ## 🚀 Production Deployment
@@ -243,15 +243,15 @@ docker run --rm llms-os:production-v2.0 /app/workflows/demo.yaml
 ### Docker Swarm
 
 ```bash
-docker stack deploy -c docker-compose.production.yml llms-os
+docker stack deploy -c docker-compose.production.yml logicpilot
 ```
 
 ### Kubernetes
 
 ```bash
 # Build and push image
-docker tag llms-os:production-v2.0 your-registry/llms-os:v2.0
-docker push your-registry/llms-os:v2.0
+docker tag logicpilot:production-v2.0 your-registry/logicpilot:v2.0
+docker push your-registry/logicpilot:v2.0
 
 # Deploy (create your k8s manifests)
 kubectl apply -f k8s/deployment.yaml
@@ -317,22 +317,22 @@ make build-no-cache
 
 ```bash
 # Check logs
-docker logs llms-os-production
+docker logs logicpilot-production
 
 # Check health
-docker inspect llms-os-production | grep Health
+docker inspect logicpilot-production | grep Health
 ```
 
 ### Workflow fails
 
 ```bash
 # Run with verbose logging
-docker run --rm -e LOG_LEVEL=DEBUG llms-os:production-v2.0 /app/workflows/demo.yaml
+docker run --rm -e LOG_LEVEL=DEBUG logicpilot:production-v2.0 /app/workflows/demo.yaml
 ```
 
 ## 📚 Additional Resources
 
-- **Original LLMs OS**: https://github.com/test01082023/llms-os
+- **Original LogicPilot**: https://github.com/test01082023/logicpilot
 - **OpenRouter API**: https://openrouter.ai/docs
 - **Alpine Linux**: https://alpinelinux.org/
 
@@ -354,6 +354,6 @@ Contributions welcome! Please open an issue or PR.
 
 ---
 
-**Built with ❤️ combining LogicPilot + LLMs OS**
+**Built with ❤️ combining LogicPilot + LogicPilot**
 
 **Production-ready and optimized for scale! 🚀**

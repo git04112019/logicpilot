@@ -1,9 +1,9 @@
-# 🎉 LLMs OS Production Build - Complete!
+# 🎉 LogicPilot Production Build - Complete!
 
 ## ✅ Build Summary
 
 **Date**: 2025-10-24  
-**Project**: LogicPilot + LLMs OS Integration  
+**Project**: LogicPilot + LogicPilot Integration  
 **Status**: ✅ **PRODUCTION READY**
 
 ---
@@ -11,7 +11,7 @@
 ## 📊 Build Results
 
 ### Docker Image
-- **Name**: `llms-os:production-v2.0`
+- **Name**: `logicpilot:production-v2.0`
 - **Size**: **173MB** (Alpine-based)
 - **Base**: Python 3.12 Alpine 3.19
 - **Architecture**: Multi-stage build (3 stages)
@@ -35,7 +35,7 @@
 ### 1. Build the Image
 ```bash
 # Simple build
-docker build -t llms-os:production-v2.0 -f Dockerfile.llms-os.alpine .
+docker build -t logicpilot:production-v2.0 -f Dockerfile.logicpilot.alpine .
 
 # Or use the build script
 chmod +x build-production.sh
@@ -45,10 +45,10 @@ chmod +x build-production.sh
 ### 2. Run a Workflow
 ```bash
 # Run demo workflow
-docker run --rm llms-os:production-v2.0 /app/workflows/demo.yaml
+docker run --rm logicpilot:production-v2.0 /app/workflows/demo.yaml
 
 # Run advanced workflow
-docker run --rm llms-os:production-v2.0 /app/workflows/advanced.yaml
+docker run --rm logicpilot:production-v2.0 /app/workflows/advanced.yaml
 ```
 
 ### 3. Full Stack with Docker Compose
@@ -60,7 +60,7 @@ docker-compose -f docker-compose.production.yml up -d
 docker-compose -f docker-compose.production.yml ps
 
 # Run workflow with API access
-docker-compose -f docker-compose.production.yml run --rm llms-os /app/workflows/demo.yaml
+docker-compose -f docker-compose.production.yml run --rm logicpilot /app/workflows/demo.yaml
 
 # Stop services
 docker-compose -f docker-compose.production.yml down
@@ -96,8 +96,8 @@ make clean
 
 ```
 /workspaces/logicpilot/
-├── Dockerfile.llms-os.alpine         ⭐ MAIN PRODUCTION DOCKERFILE
-├── Dockerfile.llms-os.production     (Alternative with external source files)
+├── Dockerfile.logicpilot.alpine         ⭐ MAIN PRODUCTION DOCKERFILE
+├── Dockerfile.logicpilot.production     (Alternative with external source files)
 ├── Dockerfile.logicpilot.alpine.v1   (Original LogicPilot)
 ├── docker-compose.production.yml     ⭐ PRODUCTION COMPOSE FILE
 ├── Makefile                          ⭐ BUILD AUTOMATION
@@ -112,10 +112,10 @@ make clean
 
 ---
 
-## 🎯 What's Different from llms-os?
+## 🎯 What's Different from logicpilot?
 
-### This Build vs Original llms-os
-| Feature | Original llms-os | This Build |
+### This Build vs Original logicpilot
+| Feature | Original logicpilot | This Build |
 |---------|-----------------|------------|
 | Base Image | Python 3.12 Alpine | Python 3.12 Alpine |
 | Size | ~168MB | **173MB** |
@@ -138,7 +138,7 @@ make clean
 ## 🔧 Built-in Components
 
 ### Workflow Actions
-All actions from llms-os are included:
+All actions from logicpilot are included:
 
 1. **print_message** - Formatted console output
    ```yaml
@@ -203,7 +203,7 @@ All actions from llms-os are included:
 ### Test Workflow Output
 ```
 INFO:LLMs_OS.core:Running workflow: Production Demo
-🚀 LLMs OS Production v2.0
+🚀 LogicPilot Production v2.0
 Health: 200
 ✅ System operational
 INFO:LLMs_OS.core:Workflow completed successfully
@@ -251,11 +251,11 @@ Total: 173MB
 ### 1. Docker Run (Simple)
 ```bash
 docker run -d \
-  --name llms-os-prod \
+  --name logicpilot-prod \
   -e OPENROUTER_API_KEY=your-key \
   -v $(pwd)/workflows:/app/workflows:ro \
   -v $(pwd)/logs:/app/logs \
-  llms-os:production-v2.0 /app/workflows/your-workflow.yaml
+  logicpilot:production-v2.0 /app/workflows/your-workflow.yaml
 ```
 
 ### 2. Docker Compose (Recommended)
@@ -265,7 +265,7 @@ docker-compose -f docker-compose.production.yml up -d
 
 ### 3. Docker Swarm
 ```bash
-docker stack deploy -c docker-compose.production.yml llms-os
+docker stack deploy -c docker-compose.production.yml logicpilot
 ```
 
 ### 4. Kubernetes
@@ -273,25 +273,25 @@ docker stack deploy -c docker-compose.production.yml llms-os
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: llms-os
+  name: logicpilot
 spec:
   replicas: 3
   selector:
     matchLabels:
-      app: llms-os
+      app: logicpilot
   template:
     metadata:
       labels:
-        app: llms-os
+        app: logicpilot
     spec:
       containers:
-      - name: llms-os
-        image: llms-os:production-v2.0
+      - name: logicpilot
+        image: logicpilot:production-v2.0
         env:
         - name: OPENROUTER_API_KEY
           valueFrom:
             secretKeyRef:
-              name: llms-os-secrets
+              name: logicpilot-secrets
               key: api-key
 ```
 
@@ -301,7 +301,7 @@ spec:
 
 - **Quick Start**: See above
 - **Full Guide**: `README.production.md`
-- **Original Project**: https://github.com/test01082023/llms-os
+- **Original Project**: https://github.com/test01082023/logicpilot
 - **LogicPilot Base**: `Dockerfile.logicpilot.alpine.v1`
 
 ---
@@ -340,7 +340,7 @@ spec:
 ## 🤝 Credits
 
 **Based on**:
-- Original LLMs OS: https://github.com/test01082023/llms-os
+- Original LogicPilot: https://github.com/test01082023/logicpilot
 - LogicPilot Alpine Architecture
 - Python FastAPI ecosystem
 - Alpine Linux project
@@ -390,9 +390,9 @@ spec:
 
 **Status**: ✅ **PRODUCTION READY**
 
-You now have a **production-grade, Alpine-based LLMs OS** that combines:
+You now have a **production-grade, Alpine-based LogicPilot** that combines:
 - LogicPilot's lightweight architecture
-- LLMs OS workflow automation
+- LogicPilot workflow automation
 - Complete tooling and automation
 - Comprehensive documentation
 
@@ -403,7 +403,7 @@ You now have a **production-grade, Alpine-based LLMs OS** that combines:
 ### Start Using Now:
 ```bash
 # Quick test
-docker run --rm llms-os:production-v2.0 /app/workflows/demo.yaml
+docker run --rm logicpilot:production-v2.0 /app/workflows/demo.yaml
 
 # Full deployment
 make deploy
